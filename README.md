@@ -93,11 +93,4 @@ $ rabbitmqadmin get queue='hello'
 
 ```yaml
 
-
 ```
-
-$ rabbitmqctl cluster_status
-```
-
-![Alt text](img/3-rabbitmq_cluster_status1.PNG)
-![Alt text](img/3-rab
