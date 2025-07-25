@@ -55,6 +55,7 @@ $ cat /etc/hosts
 
 ![Alt text](img/3-rabbitmq_cluster_vm1.PNG)
 ![Alt text](img/3-rabbitmq_cluster_vm2.PNG)
+![Alt text](img/3-rabbitmq_cluster_ha-all.PNG)
 
 Также приложите вывод команды с двух нод:
 
