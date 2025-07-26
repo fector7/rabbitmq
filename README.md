@@ -93,5 +93,82 @@ $ rabbitmqadmin get queue='hello'
 *Готовый плейбук разместите в своём репозитории.*
 
 ```yaml
+---
+- name: Установка RabbitMQ
+  hosts: rabbitmq_nodes
+  become: true
+  tasks:
+    - name: Обновить /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: "^{{ hostvars[item]['ansible_host'] }}"
+        line: "{{ hostvars[item]['ansible_host'] }} {{ item }}"
+        state: present
+      with_items: "{{ groups['rabbitmq_nodes'] }}"
 
+    - name: Установить rabbitmq-server
+      apt:
+        name: rabbitmq-server
+        state: present
+        update_cache: yes
+
+    - name: Задать имя узла
+      lineinfile:
+        path: /etc/rabbitmq/rabbitmq-env.conf
+        line: "NODENAME=rabbit@{{ inventory_hostname }}"
+        create: yes
+        owner: rabbitmq
+        group: rabbitmq
+        mode: '0644'
+
+    - name: Установить Erlang cookie
+      copy:
+        content: "{{ erlang_cookie }}"
+        dest: /var/lib/rabbitmq/.erlang.cookie
+        owner: rabbitmq
+        group: rabbitmq
+        mode: '0400'
+
+    - name: Перезапустить RabbitMQ
+      systemd:
+        name: rabbitmq-server
+        state: restarted
+        enabled: yes
+
+    - name: Ожидать готовности
+      command: rabbitmqctl await_startup
+
+- name: Присоединение к кластеру
+  hosts: rabbitmq_nodes
+  become: true
+  serial: 1
+  vars:
+    master: "{{ groups['rabbitmq_nodes'][0] }}"
+
+  tasks:
+    - name: Проверить в кластере
+      shell: "rabbitmqctl cluster_status | grep \"'rabbit@{{ inventory_hostname }}'\""
+      register: in_cluster
+      failed_when: false
+      changed_when: false
+
+    - name: Присоединить к кластеру
+      block:
+        - command: rabbitmqctl stop_app
+        - command: rabbitmqctl reset
+        - command: "rabbitmqctl join_cluster rabbit@{{ master }}"
+        - command: rabbitmqctl start_app
+      when:
+        - inventory_hostname != master
+        - in_cluster.rc != 0
+
+    - name: Включить плагин управления
+      command: rabbitmq-plugins enable rabbitmq_management
+      register: plugin_result
+      changed_when: "'already enabled' not in plugin_result.stdout"
+
+    - name: Задать политику ha-all
+      command: rabbitmqctl set_policy ha-all ".*" '{"ha-mode":"all", "ha-sync-mode":"automatic"}'
+      when: inventory_hostname == master
+      changed_when: false
 ```
