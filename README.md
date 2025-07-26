@@ -172,3 +172,12 @@ $ rabbitmqadmin get queue='hello'
       when: inventory_hostname == master
       changed_when: false
 ```
+```
+[rabbitmq_nodes]
+rmqq01 ansible_host=172.22.163.174 ansible_user=fector
+rmqq02 ansible_host=172.22.172.226 ansible_user=fedor
+rmqq03 ansible_host=172.22.163.205 ansible_user=test
+
+[all:vars]
+erlang_cookie = "TEST_RABBITMQ_COOKIE_FOR_CLUSTER"
+```
